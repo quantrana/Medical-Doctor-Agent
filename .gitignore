@@ -93,3 +93,11 @@ transformers_cache/
 # DeepSpeed
 .deepspeed_env
 ds_report/
+
+# GRPO planning documentation (local reference only, never commit)
+START_HERE.md
+README_GRPO.md
+IMPLEMENTATION_SUMMARY.md
+CODE_TEMPLATES.md
+GRPO_MIGRATION_PLAN.md
+SUMMARY.md
