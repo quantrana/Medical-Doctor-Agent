@@ -1,27 +1,3 @@
-#!/usr/bin/env python3
-"""
-GRPO Training for Medical Reasoning
-
-This script implements GRPO (Group Relative Policy Optimization) using TRL library
-with medical-specific reward functions.
-
-Theoretical Foundation:
-    GRPO uses group-relative advantages for policy optimization without requiring
-    a value function. For each prompt, multiple completions are sampled and ranked
-    by their rewards, eliminating the need for critic networks used in PPO.
-
-Usage:
-    accelerate launch scripts/train_grpo_simple.py \
-        --model_name_or_path MODEL_PATH \
-        --reward_model_path REWARD_MODEL_PATH \
-        --dataset_name DATA_PATH \
-        --output_dir OUTPUT_DIR \
-        --num_train_epochs 3 \
-        --per_device_train_batch_size 1 \
-        --gradient_accumulation_steps 16 \
-        --learning_rate 5e-7
-"""
-
 import os
 import sys
 import json
@@ -44,7 +20,7 @@ from typing import Optional
 from trl import GRPOConfig, GRPOTrainer
 
 from grpo_utils.reward_functions import format_reward, accuracy_reward, combined_reward
-from src.data.rl_dataset import RLDataset
+from src.data.grpo_dataset import GRPODataset
 
 
 @dataclass
@@ -91,20 +67,11 @@ def main():
     random.shuffle(data)
     eval_num = min(int(len(data) * 0.1), 200)
     
-    train_dataset = RLDataset(data[eval_num:], tokenizer, max_length=512)
-    eval_dataset = RLDataset(data[:eval_num], tokenizer, max_length=512)
+    train_dataset = GRPODataset(data[eval_num:], tokenizer)
+    eval_dataset = GRPODataset(data[:eval_num], tokenizer)
     
     def compute_reward(completions, **kwargs):
-        """
-        Medical-specific reward function combining format and accuracy.
-        
-        Following Sutton & Barto Chapter 3, the reward signal R(s,a) encodes
-        the goal of the learning agent. Here we decompose it into:
-            R_total = 0.3 * R_format + 0.7 * R_accuracy
-        
-        where R_format ensures structural correctness and R_accuracy measures
-        medical correctness via a learned verifier.
-        """
+       
         ground_truth = kwargs.get("ground_truth", None)
         
         if ground_truth is None:
@@ -134,22 +101,21 @@ def main():
         
         return total_rewards
     
+    training_args.tokenizer = tokenizer
+    
     trainer = GRPOTrainer(
         model=policy,
         reward_funcs=[compute_reward],
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        tokenizer=tokenizer,
     )
     
     trainer.train()
     
     trainer.save_model(training_args.output_dir)
     
-    print("="*80)
     print("Training Complete")
-    print("="*80)
 
 
 if __name__ == "__main__":
