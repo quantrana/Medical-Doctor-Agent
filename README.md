@@ -2,23 +2,6 @@
 
 A framework for training medical reasoning models using Reinforcement Learning (PPO and GRPO).
 
-## 🆕 GRPO Implementation Available!
-
-**NEW**: This repository now includes comprehensive documentation for implementing **GRPO (Group Relative Policy Optimization)** - the state-of-the-art RL technique used in DeepSeek-R1.
-
-**📚 Get Started with GRPO**:
-- **Quick Start**: Read [`START_HERE.md`](START_HERE.md) (5 minutes)
-- **Overview**: See [`README_GRPO.md`](README_GRPO.md) (10 minutes)
-- **Implementation**: Follow [`GRPO_MIGRATION_PLAN.md`](GRPO_MIGRATION_PLAN.md) (complete guide)
-- **Code**: Use [`CODE_TEMPLATES.md`](CODE_TEMPLATES.md) (ready-to-use code)
-
-**Why GRPO?**
-- ✅ **Simpler**: No value model needed (-20% memory)
-- ✅ **Better**: 5-10% accuracy improvement over PPO
-- ✅ **Proven**: Used in DeepSeek-R1 and potentially OpenAI o3
-
----
-
 ## Repository Structure
 
 The repository is organized into the following directories:
@@ -33,16 +16,8 @@ Doctor-Agent/
 ├── scripts/             Training entry points for SFT and RL stages
 ├── evaluation/          Evaluation scripts and data
 ├── ppo_utils/           PPO-specific training utilities
-├── grpo_utils/          🆕 GRPO training utilities (to be implemented)
-├── data/                Training data directory
-│
-└── Documentation/        🆕 GRPO Implementation Guides
-    ├── START_HERE.md           Navigation guide
-    ├── README_GRPO.md          Quick start & overview
-    ├── IMPLEMENTATION_SUMMARY.md   Visual quick reference
-    ├── CODE_TEMPLATES.md       Copy-paste code templates
-    ├── GRPO_MIGRATION_PLAN.md  Complete detailed guide
-    └── SUMMARY.md              Executive summary
+├── grpo_utils/          GRPO reward functions
+└── data/                Training data directory
 ```
 
 ## Requirements
@@ -53,7 +28,7 @@ The framework requires Python 3.8 or higher and the following core dependencies:
 - Transformers 4.46.2
 - Accelerate 0.34.2
 - DeepSpeed 0.15.4
-- TRL 0.13.0
+- TRL 0.14.0 (for GRPO support)
 - vLLM 0.6.4
 
 A complete list of dependencies is provided in `requirements.txt`. Install all requirements using:
@@ -107,9 +82,9 @@ Additional parameters can be configured through the command-line interface or by
 
 The second stage applies reinforcement learning using a medical verifier as the reward model. Two algorithms are supported:
 
-#### Option A: PPO (Proximal Policy Optimization) - Current
+#### Option A: PPO (Proximal Policy Optimization)
 
-The traditional approach using policy and value models. Example training command for an 8B model:
+The traditional approach using policy and value models. Example training command:
 
 ```bash
 accelerate launch \
@@ -152,9 +127,9 @@ accelerate launch \
 - `total_episodes`: Total number of PPO training episodes
 - `kl_coef`: KL divergence coefficient for PPO
 
-#### Option B: GRPO (Group Relative Policy Optimization) - Recommended 🆕
+#### Option B: GRPO (Group Relative Policy Optimization)
 
-**The state-of-the-art approach** used in DeepSeek-R1. No value model needed, better reasoning quality.
+GRPO is an alternative RL algorithm that eliminates the need for a value model by using group-relative advantages. This approach, used in DeepSeek-R1, is simpler and more memory efficient than PPO.
 
 ```bash
 accelerate launch \
@@ -175,13 +150,11 @@ accelerate launch \
     --run_name grpo_medical_o1
 ```
 
-**Key Differences**:
-- No `value_model_path` needed (simpler architecture!)
+**Key Differences from PPO**:
+- No value model required (simpler architecture)
 - `num_generations`: Number of responses per prompt (4-8 recommended)
-- Better reasoning: Multiple generations explore diverse paths
-- Memory efficient: -20% memory usage vs PPO
-
-**📚 For complete GRPO implementation guide, see [`START_HERE.md`](START_HERE.md)**
+- Multiple generations per prompt enable better exploration
+- Approximately 20% less memory usage compared to PPO
 
 ## Evaluation
 
