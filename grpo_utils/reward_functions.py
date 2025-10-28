@@ -51,6 +51,11 @@ def format_reward(completions: List[str], verbose: bool = False) -> torch.Tensor
 
 def accuracy_reward(completions: List[str], ground_truth: List[str], reward_model, reward_tokenizer,
                     device: str = "cuda", max_length: int = 4000, threshold: float = 0.4, verbose: bool = False) -> torch.Tensor:
+    
+    vocab_size = reward_model.config.vocab_size
+    pad_token_id = reward_tokenizer.pad_token_id
+    print(f"[REWARD_FUNC] vocab_size={vocab_size}, pad_token_id={pad_token_id}")
+    
     # Template for verifier input (from original PPO implementation)
     verifier_template = """<Model Response>
 {}
@@ -91,9 +96,35 @@ Your task is to evaluate the model response by comparing it to the reference ans
         return_tensors="pt",
         padding=True,
         truncation=True,
-        max_length=max_length,
-        add_special_tokens=False
+        max_length=max_length
     ).to(device)
+    
+    # CRITICAL: Clamp ALL token IDs to valid vocabulary range
+    # This prevents "Padding_idx must be within num_embeddings" error
+    vocab_size = reward_model.config.vocab_size
+    max_input_id_before = inputs['input_ids'].max().item()
+    inputs['input_ids'] = torch.clamp(inputs['input_ids'], 0, vocab_size - 1)
+    max_input_id_after = inputs['input_ids'].max().item()
+    
+    print(f"[REWARD_FUNC] Before clamp: max_id={max_input_id_before}, After: max_id={max_input_id_after}")
+    
+    # Replace padding token if it's out of bounds
+    if reward_tokenizer.pad_token_id is not None and reward_tokenizer.pad_token_id >= vocab_size:
+        # Use eos_token_id as safe fallback for padding
+        safe_pad_id = min(reward_tokenizer.eos_token_id, vocab_size - 1)
+        inputs['input_ids'][inputs['input_ids'] == reward_tokenizer.pad_token_id] = safe_pad_id
+        print(f"[REWARD_FUNC] Replaced pad_token_id {reward_tokenizer.pad_token_id} with {safe_pad_id}")
+    
+    # Check the embedding layer's padding_idx
+    if hasattr(reward_model, 'model') and hasattr(reward_model.model, 'embed_tokens'):
+        emb_padding_idx = reward_model.model.embed_tokens.padding_idx
+        emb_vocab_size = reward_model.model.embed_tokens.num_embeddings
+        print(f"[REWARD_FUNC] Embedding layer: padding_idx={emb_padding_idx}, num_embeddings={emb_vocab_size}")
+        
+        if emb_padding_idx is not None and emb_padding_idx >= emb_vocab_size:
+            print(f"[REWARD_FUNC] CRITICAL: Embedding padding_idx {emb_padding_idx} >= num_embeddings {emb_vocab_size}!")
+            print(f"[REWARD_FUNC] Fixing embedding layer padding_idx to 0")
+            reward_model.model.embed_tokens.padding_idx = 0
     
     # Get predictions from verifier (no gradient computation)
     with torch.no_grad():

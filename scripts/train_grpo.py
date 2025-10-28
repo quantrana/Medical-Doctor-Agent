@@ -53,13 +53,33 @@ def main():
         torch_dtype=torch.bfloat16
     )
     
+    reward_tokenizer = AutoTokenizer.from_pretrained(script_args.reward_model_path)
+    
+    if reward_tokenizer.pad_token is None:
+        if reward_tokenizer.unk_token_id is not None:
+            reward_tokenizer.pad_token = reward_tokenizer.unk_token
+            reward_tokenizer.pad_token_id = reward_tokenizer.unk_token_id
+        else:
+            reward_tokenizer.pad_token = reward_tokenizer.eos_token
+            reward_tokenizer.pad_token_id = reward_tokenizer.eos_token_id
+    
     reward_model = AutoModelForSequenceClassification.from_pretrained(
         script_args.reward_model_path,
         num_labels=2,
-        torch_dtype=torch.bfloat16
+        torch_dtype=torch.bfloat16,
+        pad_token_id=reward_tokenizer.pad_token_id
     )
     
-    reward_tokenizer = AutoTokenizer.from_pretrained(script_args.reward_model_path)
+    reward_model.config.pad_token_id = reward_tokenizer.pad_token_id
+    
+    if hasattr(reward_model, 'model') and hasattr(reward_model.model, 'embed_tokens'):
+        old_padding_idx = reward_model.model.embed_tokens.padding_idx
+        reward_model.model.embed_tokens.padding_idx = reward_tokenizer.pad_token_id
+        print(f"[FIXED] Embedding padding_idx: {old_padding_idx} -> {reward_tokenizer.pad_token_id}")
+    
+    print(f"Reward tokenizer pad_token_id: {reward_tokenizer.pad_token_id}")
+    print(f"Reward model vocab size: {reward_model.config.vocab_size}")
+    print(f"Reward model config pad_token_id: {reward_model.config.pad_token_id}")
     
     with open(script_args.dataset_name, 'r') as f:
         data = json.load(f)
