@@ -6,6 +6,7 @@ This repository turns compact LLMs into transparent, verifiable medical reasoner
 
 1. **Supervised Fine-Tuning (SFT)** to learn the format and basic chain-of-thought
 2. **Group-Relative Policy Optimization (GRPO)** with a multi-reward signal that jointly optimizes strict/partial format adherence and semantic answer correctness using an LLM verifier (RL with Verifiable Rewards, "RLVR")
+<img width="1401" height="791" alt="Screenshot 2025-11-12 at 18 11 18" src="https://github.com/user-attachments/assets/62b04535-6a70-4f4f-83b8-c5141c91fdc1" />
 
 The result is a doctor-style agent that explains its reasoning, emits machine-readable answers, and is harder to "reward-hack".
 
@@ -39,8 +40,10 @@ The result is a doctor-style agent that explains its reasoning, emits machine-re
 ### Two-Stage Training
 
 1. **SFT (format learning):** We first align the model to emit structured, machine-readable outputs: reasoning inside `<THINK>...</THINK>`, decision in `<ANSWER>...</ANSWER>`. This dramatically stabilizes RL by making rewards reliable and extraction trivial.
+<img width="386" height="675" alt="Screenshot 2025-11-12 at 18 13 04" src="https://github.com/user-attachments/assets/e2530553-65ad-4c9d-ab8d-e89c5a1336fd" />
 
 2. **GRPO (reasoning optimization):** For each prompt, we sample a group of completions, compute composite rewards, normalize within-group, and update with a clipped PPO-style surrogate (no value network). We use Dr-GRPO to remove sequence-length bias.
+<img width="860" height="694" alt="Screenshot 2025-11-12 at 18 13 22" src="https://github.com/user-attachments/assets/5fc502d3-7ddd-4ee6-a822-d6c47c6330ac" />
 
 ### Why GRPO over PPO
 
@@ -59,6 +62,7 @@ The result is a doctor-style agent that explains its reasoning, emits machine-re
 - **Config:** r=32, α=64, dropout=0.1
 - **Targets:** q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj
 - **Rationale:** Maximize reasoning gains per GPU hour while preserving base model priors; enables rapid ablation across backbones.
+<img width="744" height="601" alt="Screenshot 2025-11-12 at 18 14 34" src="https://github.com/user-attachments/assets/f9a5e042-7188-4217-ad28-79191bff6cb1" />
 
 ---
 
@@ -72,14 +76,9 @@ The result is a doctor-style agent that explains its reasoning, emits machine-re
 ---
 
 ## Results
+<img width="409" height="306" alt="Screenshot 2025-11-12 at 18 15 44" src="https://github.com/user-attachments/assets/8970c3e0-d74d-456d-9394-a5754fa83c50" />
 
-### Headline Accuracy (Exact-Match)
-
-| Model (Qwen3-1.7B) | RL Method | MedQA (n=1,273) | MedMCQA (n=4,183) |
-|--------------------|-----------|-----------------|-------------------|
-| Instruct           | PPO       | 45.48%          | 40.04%            |
-| Instruct           | GRPO      | 49.41%          | 46.07%            |
-| Base               | GRPO      | 44.78%          | 44.42%            |
+<img width="1233" height="544" alt="Screenshot 2025-11-12 at 18 16 08" src="https://github.com/user-attachments/assets/f26c668f-e4fc-4752-8317-99ed371a92a3" />
 
 **Takeaways:** GRPO beats PPO on the same backbone (+3.93 pp MedQA, +6.03 pp MedMCQA). Base+GRPO approaches or exceeds Instruct+PPO (−0.70 pp on MedQA; +4.38 pp on MedMCQA), showing that group-relative, multi-reward RL can bootstrap reasoning even from a non-instruction-tuned model. The overall best is Instruct+GRPO.
 
@@ -100,11 +99,12 @@ The result is a doctor-style agent that explains its reasoning, emits machine-re
 ## System & GUI
 
 We ship a Gradio ChatInterface that streams `<THINK>` (complex chain-of-thought) and then reveals a compact `<ANSWER>`. Two toggles provide transparency on demand:
+<img width="1421" height="900" alt="Screenshot 2025-11-12 at 18 17 12" src="https://github.com/user-attachments/assets/b09dd791-53f9-4a58-8ce3-9f2a4a7cd646" />
 
 - **RAG Contexts:** Retrieved snippets grounding the answer
+<img width="1552" height="920" alt="Screenshot 2025-11-12 at 18 18 00" src="https://github.com/user-attachments/assets/0b70c55f-5c6c-49d8-befd-3e39e70c31fb" />
 - **Thinking:** The full reasoning trace
-
-Users can type free-form questions or click symptom chips to prime the agent. This balances explainability, provenance, and clinical usability.
+<img width="1598" height="924" alt="Screenshot 2025-11-12 at 18 18 37" src="https://github.com/user-attachments/assets/3c3bd7da-fbf5-471a-b2ac-b9547f3153f8" />
 
 ---
 
